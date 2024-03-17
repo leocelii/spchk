@@ -26,8 +26,8 @@ void processFile(const char *path, const char* dictionary) {
         lineStart = 0;
         int bufEnd = position + bytesRead;
         while (position < bufEnd) {
-            if (buf[position] == '\n'){ // found a line starting a linestart and ending before position
-                buf[position] = '\0';
+            if (buffer[position] == '\n'){ // found a line starting a linestart and ending before position
+                buffer[position] = '\0';
                 //buf + lineStart is where line begins, divide the line into words, hack off beginning and trailing punctuation, check against dictionary. (possibly make a new function for this)
                 lineStart = position + 1;
             }
