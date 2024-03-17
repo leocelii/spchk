@@ -15,7 +15,7 @@ void processFile(const char *path, const char* dictionary) {
         perror(path);
         exit(EXIT_FAILURE);
     }
-    int bufLength = BUFLENGTH
+    int bufLength = BUFLENGTH;
     char *buffer = malloc(BUFLENGTH);
 
     int position = 0;
