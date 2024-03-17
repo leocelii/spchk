@@ -13,7 +13,7 @@ void processFile(const char *path, const char* dictionary) {
     int fileDescriptor = open(path, O_RDONLY);
     if (fileDescriptor < 0) {
         perror(path);
-        exit(EXIT_FAILRE);
+        exit(EXIT_FAILURE);
     }
     int bufLength = BUFLENGTH
     char *buffer = malloc(BUFLENGTH);
