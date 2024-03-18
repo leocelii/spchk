@@ -15,8 +15,8 @@
 #define ALPHABET_SIZE 128 //All ASCI Characters, including letters and punctuation. 
 #define BUFSIZE 1024
 int totalErrors = 0; //this is just a counter for the total number of errors to see if the count is correct
-// Creates definiton of a TrieNode, used to represent the dictionary that we will use to test all our text files against, for spelling. 
 
+// Creates definiton of a TrieNode, used to represent the dictionary that we will use to test all our text files against, for spelling. 
 typedef struct TrieNode{
     struct TrieNode *children[ALPHABET_SIZE]; //uppercase and lowercase
     int wordEnd;
