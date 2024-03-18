@@ -4,6 +4,9 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <dirent.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <ctype.h>
 
 #ifndef BUFLENGTH
 #define BUFLENGTH 16
@@ -11,8 +14,9 @@
 
 #define ALPHABET_SIZE 128 //All ASCI Characters, including letters and punctuation. 
 #define BUFSIZE 1024
-
+int totalErrors = 0; //this is just a counter for the total number of errors to see if the count is correct
 // Creates definiton of a TrieNode, used to represent the dictionary that we will use to test all our text files against, for spelling. 
+
 typedef struct TrieNode{
     struct TrieNode *children[ALPHABET_SIZE]; //uppercase and lowercase
     int wordEnd;
@@ -45,82 +49,72 @@ void insertWord(TrieNode *rootNode, const char *word){
     node->wordEnd = 1;
 }
 
-int main(int argc, char *argv[]) {
-    //read in dictionary as second argument and create a TrieNode to represent it
-    if (argc < 3){
-        printf("Requires the input of files/folders for spelling check.");
-        exit(EXIT_FAILURE);
-    }
-    
-    int dictionaryFd = open(argv[1], O_RDONLY);
-    if (dictionaryFd == -1){
-        printf("Error: Unable to open dictionary file.\n");
-        exit(EXIT_FAILURE);
-    }
 
-    TrieNode *dictionary = createNode();
-    char buffer[BUFSIZE];
-    ssize_t bytesRead;
-    char *wordStart = buffer;
-    while ((bytesRead = read(dictionaryFd, buffer, BUFSIZE)) > 0) {
-        for(int i = 0; i < bytesRead; i++) {
-            if (buffer[i] == '\n') {
-                buffer[i] == '\0';
-                insertWord(dictionary, wordStart)
-                wordStart = &buffer[i+1];
-            }
-        }
+// Once our TrieNode dictionary is fully populated, and we are in the process of spell-checking text files, this function 
+// is used to check the spelling, letter by letter of the word, with the dictionary. It will skip over correctly spelled words,
+// and return 0, upon a mispelled word. 
+int searchWord(TrieNode *dictionary, const char *word){
+    TrieNode *node = dictionary;
+    int length = strlen(word);
+    for (int i = 0; i < length; i++){
+        int letterIndex = (int)word[i];
+	
+	if (i == 0 && isupper(word[i]) && !node->children[letterIndex]) {
+	    node = node->children[(int)tolower(word[i])];
+	    continue;
+	}
+	else if (i == 0 && isupper(word[i]) && node->children[letterIndex]) {
+	    char *result = strdup(word);
+	    result[0] = tolower(result[0]);
+	    char *lowerVersion = result;
+	    if(searchWord(dictionary, lowerVersion)){
+		return 1;
+	    } 
+	    else {
+		node = node->children[letterIndex];
+		continue;
+	    }
+	}
+	else if (!node->children[letterIndex]) {
+	    return 0;
+	}
+        node = node->children[letterIndex];
     }
-    //inserts last word if not followed by a newLine char
-    if (wordStart < (&buffer[BUFSIZE])){
-        insertWord(dictionary, wordStart);
-    }
-    close(dictionaryFd);
-
-
-    for (int i = 2; i < argc; i++){
-        struct stat data;
-        if (stat(argv[i], &data) == 0){
-            if(S_ISDIR(data.st_mode)){
-                traverseDir(argv[i], dictionary);
-            } else if (S_ISREG(data.st_mode)) {
-                processFile(argv[i], dictionary);
-            } else {
-                printf("Error: %s is neither a file nor a directory.\n", argv[i]);
-                exit(EXIT_FAILURE);
-            }
-        }
-        else {
-            printf("Error: Unable to stat %s\n", argv[i]);
-            exit(EXIT_FAILURE);
-        }
-    }
-    
+    return ((node->wordEnd) && (node != NULL));
 }
 
-void traverseDir(const char *path, const char *dictionary) {
-    DIR *dir;
-    struct dirent * dirElement
+// removes all header and trailing punctuation from an input word
+void removePunct(char *word) {
+    int len = strlen(word);
+    int start = 0;
+    int end = len - 1;
 
-    dir = opendir(path);
-    if (dir == NULL){
-        exit(EXIT_FAILURE);
-    }
+    // remove starting punctuation
+    while (start < len && ispunct(word[start]))
+        start++;
+    //remove ending punctuation
+    while (end >= 0 && ispunct(word[end]))
+        end--;
 
-    while((dirElement = readdir(dir)) != NULL){
-        if(dirElement->d_name[0] != ".") {
-            char subDirPath[BUFSIZE];
-            snprintf(subDirPath, sizeof(subDirPath), "%s/%s", path, dirElement->d_name);
-            if (dirElement->d_type == DT_DIR){ //dirElement is a directory
-                traverseDir(subDirPath, dictionary);
-            } //dirElement is a file
-            else if ((dirElement->d_type == DT_REG) && (strstr(dirElement->d_name, ".txt") != NULL)){
-                processFile(subDirPath, dictionary)
-            } 
+    memmove(word, word + start, end - start + 1);
+    word[end - start + 1] = '\0';
+}
+
+void processLine(char *line, TrieNode *dictionary, const char *path){
+    char *splitWord = strtok(line," ");
+    while (splitWord != NULL){
+        removePunct(splitWord);
+        if(!searchWord(dictionary, splitWord)){
+            printf ("%s: %s\n", path, splitWord);
+	    totalErrors++;
+            // determine the row and column number of the incorrect word in the original text file.
+            //add 1 to a universal error counter. at the end of the main function, if counter > 0, exit with EXIT_FAILURE. 
+            // if all files could be opened and counter = 0, exit with EXIT_SUCCESS
         }
+	splitWord = strtok(NULL, " ");
     }
-    
-}    
+}
+
 
 void processFile(const char *path, TrieNode *dictionary) {
     int fileDescriptor = open(path, O_RDONLY);
@@ -128,7 +122,7 @@ void processFile(const char *path, TrieNode *dictionary) {
         perror(path);
         exit(EXIT_FAILURE);
     }
-    int bufLength = BUFLENGTH
+    int bufLength = BUFLENGTH;
     char *buffer = malloc(BUFLENGTH);
 
     int position = 0;
@@ -173,48 +167,94 @@ void processFile(const char *path, TrieNode *dictionary) {
     close(fileDescriptor);
 }
 
-void processLine(const char *line, TrieNode *dictionary, const char *path){
-    char *splitWord = strtok(line," ");
-    while (splitWord != NULL){
-        removePunct(splitWord);
-        if(!searchWord(dictionary, splitWord)){
-            printf ("%s (%d, %d): %s", path, row, column, splitWord);
-            // determine the row and column number of the incorrect word in the original text file.
-            //add 1 to a universal error counter. at the end of the main function, if counter > 0, exit with EXIT_FAILURE. 
-            // if all files could be opened and counter = 0, exit with EXIT_SUCCESS
+void traverseDir(const char *path, TrieNode *dictionary) {
+    DIR *dir;
+    struct dirent *dirElement;
+
+    dir = opendir(path);
+    if (dir == NULL){
+	printf("Directory %s could not be opened.", path);
+        exit(EXIT_FAILURE);
+    }
+
+    while((dirElement = readdir(dir)) != NULL){
+        if(dirElement->d_name[0] != '.') {
+            char subDirPath[BUFSIZE];
+            snprintf(subDirPath, sizeof(subDirPath), "%s/%s", path, dirElement->d_name);
+            if (dirElement->d_type == DT_DIR){ //dirElement is a directory
+                traverseDir(subDirPath, dictionary);
+            } //dirElement is a file
+            else if ((dirElement->d_type == DT_REG) && (strstr(dirElement->d_name, ".txt") != NULL)){
+                processFile(subDirPath, dictionary);
+            } 
         }
     }
-}
+    
+}    
 
-// Once our TrieNode dictionary is fully populated, and we are in the process of spell-checking text files, this function 
-// is used to check the spelling, letter by letter of the word, with the dictionary. It will skip over correctly spelled words,
-// and return 0, upon a mispelled word. 
-void searchWord(TrieNode *dictionary, const char *word){
-    TrieNode *node = dictionary;
-    int length = strlen(word);
-    for (int i = 0; i < length; i++){
-        int letterIndex = (int)word[i];
-        if(!node->children[letterIndex]){
-            return 0; //incorrect character found, word spelled incorrectly
-        }
-        node = node->children[letterIndex]
+int main(int argc, char *argv[]) {
+    //read in dictionary as second argument and create a TrieNode to represent it
+    if (argc < 3){
+        printf("Requires the input of files/folders for spelling check.\n");
+        exit(EXIT_FAILURE);
+	return 1;
     }
-    return node != NULL && node->wordEnd;
-}
+    
+    int dictionaryFd = open(argv[1], O_RDONLY);
+    if (dictionaryFd == -1){
+        printf("Error: Unable to open dictionary file.\n");
+        exit(EXIT_FAILURE);
+	return 1;
+    }
 
-// removes all header and trailing punctuation from an input word
-void removePunct(char *word) {
-    int len = strlen(word);
-    int start = 0;
-    int end = len - 1;
+    TrieNode *dictionary = newNode();
+    if (dictionary == NULL){
+	printf("Error: Unable to allocate memory for the dictionary.\n");
+	exit(EXIT_FAILURE);
+	return 1;
+    }
+    char buffer[BUFSIZE];
+    ssize_t bytesRead;
+    char *wordStart = buffer;
+    while ((bytesRead = read(dictionaryFd, buffer, BUFSIZE)) > 0) {
+        for(int i = 0; i < bytesRead; i++) {
+            if (buffer[i] == '\n') {
+                buffer[i] = '\0';
+                insertWord(dictionary, wordStart);
+                wordStart = &buffer[i+1];
+            }
+        }
+    }
+    close(dictionaryFd);
 
-    // remove starting punctuation
-    while (start < len && ispunct(word[start]))
-        start++;
-    //remove ending punctuation
-    while (end >= 0 && ispunct(word[end]))
-        end--;
 
-    memmove(word, word + start, end - start + 1);
-    word[end - start + 1] = '\0';
+    for (int i = 2; i < argc; i++){
+        struct stat data;
+        if (stat(argv[i], &data) == 0){
+            if(S_ISDIR(data.st_mode)){
+                traverseDir(argv[i], dictionary);
+            } else if (S_ISREG(data.st_mode)) {
+                processFile(argv[i], dictionary);
+            } else {
+                printf("Error: %s is neither a file nor a directory.\n", argv[i]);
+                exit(EXIT_FAILURE);
+		return 1;
+            }
+        }
+        else {
+            printf("Error: Unable to stat %s\n", argv[i]);
+            exit(EXIT_FAILURE);
+	    return 1;
+        }
+    }
+    if (totalErrors > 0){
+	printf("There were %d total errors.\n", totalErrors);
+	exit(EXIT_FAILURE);
+	return 1;
+    }
+    else {
+	printf("Spell Check Complete: 0 errors\n");
+	exit(EXIT_SUCCESS);
+	return 0;
+    }
 }
