@@ -1,5 +1,5 @@
 # spchk
-At its core, the program utilizes various data structures and file-handling techniques to achieve its objectives.
+Our program utilizes various data structures and file-handling techniques to achieve the assignment's objectives.
 
 One of the key components of our program is its handling of the dictionary file. The program reads the dictionary file provided as the first argument and creates a TrieNode data structure to represent it. This TrieNode structure allows for efficient storage and retrieval of words, enabling fast dictionary lookups during the spelling check process.
 
