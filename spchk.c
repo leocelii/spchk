@@ -100,18 +100,17 @@ void removePunct(char *word) {
     word[end - start + 1] = '\0';
 }
 
-void processLine(char *line, TrieNode *dictionary, const char *path){
-    char *splitWord = strtok(line," ");
-    while (splitWord != NULL){
+void processLine(char *line, TrieNode *dictionary, const char *path, int lineNum) {
+    char *splitWord = strtok(line, " ");
+    int columnNum = 1;
+    while (splitWord != NULL) {
         removePunct(splitWord);
-        if(!searchWord(dictionary, splitWord)){
-            printf ("%s: %s\n", path, splitWord);
-	    totalErrors++;
-            // determine the row and column number of the incorrect word in the original text file.
-            //add 1 to a universal error counter. at the end of the main function, if counter > 0, exit with EXIT_FAILURE. 
-            // if all files could be opened and counter = 0, exit with EXIT_SUCCESS
+        if (!searchWord(dictionary, splitWord)) {
+            printf("%s (%d,%d): %s\n", path, lineNum, columnNum, splitWord);
+            totalErrors++;
         }
-	splitWord = strtok(NULL, " ");
+        splitWord = strtok(NULL, " ");
+        columnNum++;
     }
 }
 
