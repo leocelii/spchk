@@ -1,3 +1,13 @@
+# Project 2 README
+
+## Authors:
+Leonardo Celi (lgc59)
+Ammar Ghauri (amg610)
+
+## Design Notes:
+Description of mymalloc.c library
+---------------------------------
+
 # spchk
 Our program utilizes various data structures and file-handling techniques to achieve the assignment's objectives.
 
