@@ -6,3 +6,4 @@ hello-world
 hel-world
 hEllO
 hello@
+hello-
