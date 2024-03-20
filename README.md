@@ -5,7 +5,7 @@ Leonardo Celi (lgc59)
 Ammar Ghauri (amg610)
 
 ## Design Notes:
-Description of mymalloc.c library
+Description of spchkc.c library
 ---------------------------------
 
 # spchk
@@ -21,4 +21,5 @@ When a spelling error is detected, the program records information about the err
 
 Finally, the program ensures a smooth execution flow by handling various exit scenarios. If all files are successfully processed and contain no spelling errors, the program exits with a success status. However, if any issues are encountered during file processing or spelling checking, the program exits with a failure status, indicating the presence of errors that require attention.
 
-We also made a test library and file to use the test library to test out the various scenarios 
+# mydict 1 & 2
+We also made two test libraries and files to test the functionality of handling variations of words, and reporting them in the right order, with the correct row and column number. The test files are simple but provides assurance that our program can handle specific edge cases. 
