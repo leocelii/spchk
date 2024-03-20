@@ -20,3 +20,5 @@ The spelling check itself is a critical aspect of the program's functionality. F
 When a spelling error is detected, the program records information about the error, including the word itself, the file containing it, and the specific line and column number where the word appears. This meticulous error reporting ensures that users can easily identify and correct spelling issues in their text files.
 
 Finally, the program ensures a smooth execution flow by handling various exit scenarios. If all files are successfully processed and contain no spelling errors, the program exits with a success status. However, if any issues are encountered during file processing or spelling checking, the program exits with a failure status, indicating the presence of errors that require attention.
+
+We also made a test library and file to use the test library to test out the various scenarios 
