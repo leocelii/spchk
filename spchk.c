@@ -9,14 +9,15 @@
 #include <ctype.h>
 
 #ifndef BUFLENGTH
-#define BUFLENGTH 16
+#define BUFLENGTH 10000
 #endif
 
 #define ALPHABET_SIZE 128 //All ASCI Characters, including letters and punctuation. 
-#define BUFSIZE 1024
-int totalErrors = 0; //this is just a counter for the total number of errors to see if the count is correct
-
+#define BUFSIZE 10000
+int totalErrors = 0; //tracks the total number of errors
 // Creates definiton of a TrieNode, used to represent the dictionary that we will use to test all our text files against, for spelling. 
+int col = 0;
+int row = 0;
 typedef struct TrieNode{
     struct TrieNode *children[ALPHABET_SIZE]; //uppercase and lowercase
     int wordEnd;
@@ -66,7 +67,7 @@ int searchWord(TrieNode *dictionary, const char *word){
 	else if (i == 0 && isupper(word[i]) && node->children[letterIndex]) {
 	    char *result = strdup(word);
 	    result[0] = tolower(result[0]);
-	    char *lowerVersion = result;
+  	    char *lowerVersion = result;
 	    if(searchWord(dictionary, lowerVersion)){
 		return 1;
 	    } 
@@ -100,17 +101,39 @@ void removePunct(char *word) {
     word[end - start + 1] = '\0';
 }
 
-void processLine(char *line, TrieNode *dictionary, const char *path, int lineNum) {
-    char *splitWord = strtok(line, " ");
-    int columnNum = 1;
-    while (splitWord != NULL) {
-        removePunct(splitWord);
-        if (!searchWord(dictionary, splitWord)) {
-            printf("%s (%d,%d): %s\n", path, lineNum, columnNum, splitWord);
-            totalErrors++;
-        }
-        splitWord = strtok(NULL, " ");
-        columnNum++;
+void processHyphenated(char *line, TrieNode *dictionary, const char *path){
+    char *wordStart = line;
+    char *copy = strdup(line);
+    char *hyphen = strchr(line, '-');
+    while (hyphen != NULL) {
+	*hyphen = '\0';
+	col++;
+	if (!searchWord(dictionary, wordStart)) {
+	    totalErrors++;
+	    printf("%s (%d, %d): %s\n", path, row, col, copy);
+	}
+	wordStart = hyphen + 1;
+	hyphen = strchr(wordStart, '-');
+    }
+    if (!searchWord(dictionary, wordStart)) totalErrors++, printf("%s (%d, %d): %s\n", path, row, col, copy);
+}
+
+void processLine(char *line, TrieNode *dictionary, const char *path){
+    row++;
+    col = 0;
+    char *splitWord = strtok(line," ");
+    while (splitWord != NULL){
+	col++;
+	removePunct(splitWord);
+	if (strchr(splitWord, '-') != NULL) {
+	    char *copy = strdup(splitWord);
+	    processHyphenated(copy, dictionary, path);
+	}
+	else if (!searchWord(dictionary, splitWord)) {
+            printf ("%s (%d, %d): %s\n", path, row, col, splitWord);
+	    totalErrors++;
+	}
+	splitWord = strtok(NULL, " ");
     }
 }
 
@@ -118,7 +141,7 @@ void processLine(char *line, TrieNode *dictionary, const char *path, int lineNum
 void processFile(const char *path, TrieNode *dictionary) {
     int fileDescriptor = open(path, O_RDONLY);
     if (fileDescriptor < 0) {
-        perror(path);
+          perror(path);
         exit(EXIT_FAILURE);
     }
     int bufLength = BUFLENGTH;
@@ -247,12 +270,10 @@ int main(int argc, char *argv[]) {
         }
     }
     if (totalErrors > 0){
-	printf("There were %d total errors.\n", totalErrors);
 	exit(EXIT_FAILURE);
 	return 1;
     }
     else {
-	printf("Spell Check Complete: 0 errors\n");
 	exit(EXIT_SUCCESS);
 	return 0;
     }
